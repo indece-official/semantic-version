@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
+
+var flagGitBranch = flag.String("git-branch", "", "")
 
 type Analyzer struct {
 	mapCommitTags map[string][]*VersionInfo
@@ -73,30 +76,15 @@ func (a *Analyzer) Load(repo *git.Repository) error {
 }
 
 func (a *Analyzer) GetCurrentBranchConfig(repo *git.Repository) (string, *BranchConfig, error) {
-	branchIter, err := repo.Branches()
-	if err != nil {
-		return "", nil, fmt.Errorf("can't load branches: %s", err)
-	}
-
 	branchName := ""
 
-	for {
-		branch, err := branchIter.Next()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			return "", nil, fmt.Errorf("can't iterate branches: %s", err)
-		}
-
-		if branch.Hash() == a.head.Hash() {
-			branchName = branch.Name().Short()
-			break
-		}
+	if *flagGitBranch != "" {
+		branchName = *flagGitBranch
+	} else {
+		branchName = a.head.Name().Short()
 	}
 
-	if branchName == "" {
+	if branchName == "" || branchName == "HEAD" {
 		return "", nil, nil
 	}
 

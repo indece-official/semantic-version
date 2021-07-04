@@ -12,7 +12,7 @@ before() {
 }
 
 assertVersion() {
-    VERSION=$($PROGRAM get-version)
+    VERSION=$($PROGRAM $2 $3 $4 $5 get-version)
     if [[ $? -ne 0 ]] ; then
         echo "ERROR: $PROGRAM returned error code $?"
 
@@ -27,7 +27,7 @@ assertVersion() {
 }
 
 assertChangelogLines() {
-    CHANGELOG=$($PROGRAM get-changelog)
+    CHANGELOG=$($PROGRAM $2 $3 $4 $5 get-changelog)
     if [[ $? -ne 0 ]] ; then
         echo "ERROR: $PROGRAM returned error code $?"
 
@@ -60,6 +60,20 @@ testSimple() {
 
     git add . > /dev/null
     git commit -m "feat: Some change" > /dev/null
+    assertVersion "v1.0.0"
+    assertChangelogLines 1
+
+    LAST_GIT_HASH=$(git rev-parse --short HEAD)
+    git checkout $LAST_GIT_HASH
+    echo "2a" > "testfile.txt"
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    assertVersion "v1.0.0" -git-branch master
+    assertChangelogLines 1 -git-branch master
+
+    git checkout "testfile.txt"
+    git checkout master
     assertVersion "v1.0.0"
     assertChangelogLines 1
 

@@ -1,7 +1,7 @@
 # Project config
 PROJECT_NAME=semantic-version
 BUILD_DATE=$(shell date +%Y%m%d.%H%M%S)
-BUILD_VERSION ?= $(shell git rev-parse --short HEAD)-SNAPSHOT
+BUILD_VERSION ?= SNAPSHOT
 
 # Go parameters
 GOCMD=go

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"regexp"
@@ -141,7 +142,10 @@ func getChangelog() error {
 }
 
 func printHelp() {
-	fmt.Printf("Usage: is2-semantic-version <command>\n")
+	fmt.Printf("Usage: is2-semantic-version [args] <command>\n")
+	fmt.Printf("\n")
+	fmt.Printf("Args:\n")
+	flag.PrintDefaults()
 	fmt.Printf("\n")
 	fmt.Printf("Commands:\n")
 	fmt.Printf("  generate-config  Generate config file 'semanticversion.yaml'\n")
@@ -152,7 +156,9 @@ func printHelp() {
 func main() {
 	var err error
 
-	if len(os.Args) != 2 {
+	flag.Parse()
+
+	if len(flag.Args()) != 1 {
 		printHelp()
 
 		os.Exit(1)
@@ -160,7 +166,7 @@ func main() {
 		return
 	}
 
-	command := os.Args[1]
+	command := flag.Arg(0)
 
 	switch command {
 	case "generate-config":
