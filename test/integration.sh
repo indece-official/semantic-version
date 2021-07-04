@@ -150,22 +150,22 @@ testBranches() {
     assertChangelogLines 2
 
     git tag v1.2.0-feat_test1.0
-    assertVersion "v1.2.0-feat_test1.1"
-    assertChangelogLines 2
+    assertVersion "v1.2.0-feat_test1.1" -debug
+    assertChangelogLines 2 -debug
 
     echo "5" > "testfile5.txt"
     git add . > /dev/null
     git commit -m "fix: Some change feat 1" > /dev/null
-    assertVersion "v1.2.0-feat_test1.1"
-    assertChangelogLines 3
+    assertVersion "v1.2.0-feat_test1.1" -debug
+    assertChangelogLines 3 -debug
 
     git checkout master
     assertVersion "v1.2.0"
     assertChangelogLines 0
 
     git merge feat/test1 -m "Merge feat/test1"
-    assertVersion "v1.3.0"
-    assertChangelogLines 3
+    assertVersion "v1.3.0" -debug
+    assertChangelogLines 3 -debug
 
     echo "Success"
 }

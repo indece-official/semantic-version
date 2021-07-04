@@ -145,7 +145,22 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig *BranchConfig, channelSensitive bool) ([]*object.Commit, error) {
 	commits := []*object.Commit{}
 
-	commitIter := object.NewCommitPostorderIter(a.headCommit, []plumbing.Hash{})
+	seenExternal := map[plumbing.Hash]bool{}
+	for commitHash, versionInfos := range a.mapCommitTags {
+		for _, versionInfo := range versionInfos {
+			if !versionInfo.ReleaseChannel.IsRelease() {
+				continue
+			}
+
+			if !channelSensitive || versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
+				// Found matching release commit, return
+				seenExternal[plumbing.NewHash(commitHash)] = true
+				break
+			}
+		}
+	}
+
+	commitIter := object.NewCommitIterBSF(a.headCommit, seenExternal, []plumbing.Hash{})
 	for {
 		commit, err := commitIter.Next()
 		if err != nil {
@@ -156,11 +171,9 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 			return nil, fmt.Errorf("can't iterate commits: %s", err)
 		}
 
-		versionInfos, exists := a.mapCommitTags[commit.Hash.String()]
+		Debugf("Analyze commit %s for changelog => %v", commit.Hash.String(), a.mapCommitTags[commit.Hash.String()])
 
-		Debugf("Analyze commit %s for changelog => %v", commit.Hash.String(), versionInfos)
-
-		if exists {
+		/*if exists {
 			for _, versionInfo := range versionInfos {
 				if !versionInfo.ReleaseChannel.IsRelease() {
 					continue
@@ -171,7 +184,7 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 					return commits, nil
 				}
 			}
-		}
+		}*/
 
 		commits = append(commits, commit)
 	}
