@@ -29,10 +29,14 @@ func (a *Analyzer) Load(repo *git.Repository) error {
 		return fmt.Errorf("can't load head: %s", err)
 	}
 
+	Debugf("Head is %s", a.head.Hash().String())
+
 	a.headCommit, err = repo.CommitObject(a.head.Hash())
 	if err != nil {
 		return fmt.Errorf("can't load head commit: %s", err)
 	}
+
+	Debugf("Head commit is %s", a.headCommit.Hash.String())
 
 	tags, err := repo.Tags()
 	if err != nil {
@@ -63,6 +67,8 @@ func (a *Analyzer) Load(repo *git.Repository) error {
 				continue
 			}
 
+			Debugf("Found tag %s (%s) => %v", tagName, tagCommitStr, versionInfo)
+
 			if _, exists := a.mapCommitTags[tagCommitStr]; !exists {
 				a.mapCommitTags[tagCommitStr] = []*VersionInfo{}
 			}
@@ -85,14 +91,20 @@ func (a *Analyzer) GetCurrentBranchConfig(repo *git.Repository) (string, *Branch
 	}
 
 	if branchName == "" || branchName == "HEAD" {
+		Debugf("Found no valid branch name: %s", branchName)
+
 		return "", nil, nil
 	}
 
 	for _, branchConfig := range a.config.Branches {
 		if branchConfig.GetBranchPattern().Match(branchName) {
+			Debugf("Found config %s for branch name %s", branchConfig.BranchPattern, branchName)
+
 			return branchName, branchConfig, nil
 		}
 	}
+
+	Debugf("Found no config for branch name %s", branchName)
 
 	return branchName, nil, nil
 }
@@ -125,6 +137,8 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 		}
 	}
 
+	Debugf("Found highest release tag %v", highestTag)
+
 	return highestTag, nil
 }
 
@@ -143,13 +157,16 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 		}
 
 		versionInfos, exists := a.mapCommitTags[commit.Hash.String()]
+
+		Debugf("Analyze commit %s for changelog => %v", commit.Hash.String(), versionInfos)
+
 		if exists {
 			for _, versionInfo := range versionInfos {
 				if !versionInfo.ReleaseChannel.IsRelease() {
 					continue
 				}
 
-				if !channelSensitive || versionInfo.ReleaseChannel == branchConfig.ReleaseChannel {
+				if !channelSensitive || versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
 					// Found matching release commit, return
 					return commits, nil
 				}

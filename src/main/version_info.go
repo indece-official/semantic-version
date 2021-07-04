@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type VersionInfo struct {
 	Major          int
 	Minor          int
@@ -42,4 +44,8 @@ func (v *VersionInfo) IsGreaterThan(b *VersionInfo) bool {
 	}
 
 	return false
+}
+
+func (v *VersionInfo) String() string {
+	return fmt.Sprintf("%d.%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.Build, v.Branch)
 }
