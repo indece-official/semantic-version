@@ -41,10 +41,16 @@ func (v *VersionIncrement) Apply(versionInfo *VersionInfo) {
 	switch v.level {
 	case VersionIncrementLevelMajor:
 		versionInfo.Major++
+		versionInfo.Minor = 0
+		versionInfo.Patch = 0
+		versionInfo.Build = 0
 	case VersionIncrementLevelMinor:
 		versionInfo.Minor++
+		versionInfo.Patch = 0
+		versionInfo.Build = 0
 	case VersionIncrementLevelPatch:
 		versionInfo.Patch++
+		versionInfo.Build = 0
 	case VersionIncrementLevelBuild:
 		versionInfo.Build++
 	}
