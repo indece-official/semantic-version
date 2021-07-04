@@ -170,12 +170,66 @@ testBranches() {
     echo "Success"
 }
 
+testDevelopRelease() {
+    echo "Testing develop/release repository"
+
+    git init > /dev/null
+    
+    echo "1" > "testfile.txt"
+    git add . > /dev/null
+    git commit -m "Initial commit" > /dev/null
+    assertVersion "v1.0.0"
+    assertChangelogLines 0
+
+    git tag v1.0.0
+
+    git checkout -b develop
+
+    echo "1\n\n2" > "testfile.txt"
+    git add . > /dev/null
+    git commit -m "feat: Change 1" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    git checkout master
+    assertVersion "v1.0.0"
+    assertChangelogLines 0
+
+    git merge develop --no-ff --commit -m "Merge develop in master"
+    assertVersion "v1.1.0"
+    assertChangelogLines 1
+
+    git tag v1.1.0
+    
+    git checkout develop
+
+    echo "1\n\n2\n\n3" > "testfile.txt"
+    git add . > /dev/null
+    git commit -m "fix: Change 2" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    git checkout master
+    assertVersion "v1.1.0"
+    assertChangelogLines 0
+
+    git merge develop --no-ff --commit -m "Merge develop in master"
+    git tree
+    assertVersion "v1.1.1"
+    assertChangelogLines 1
+
+    echo "Success"
+}
+
 main() {
     before
     testSimple
 
     before
     testBranches
+
+    before
+    testDevelopRelease
 }
 
 main

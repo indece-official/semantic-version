@@ -14,11 +14,14 @@ import (
 var flagGitBranch = flag.String("git-branch", "", "")
 
 type Analyzer struct {
+	// commit-hash => VersionInfo of tag
 	mapCommitTags map[string][]*VersionInfo
-	mapTags       map[string]bool
-	head          *plumbing.Reference
-	headCommit    *object.Commit
-	config        *Config
+	// commit-hash => parent commit-hashes
+	//mapCommitTagParents map[string][]string
+	mapTags    map[string]bool
+	head       *plumbing.Reference
+	headCommit *object.Commit
+	config     *Config
 }
 
 func (a *Analyzer) Load(repo *git.Repository) error {
@@ -153,8 +156,21 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 			}
 
 			if !channelSensitive || versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
-				// Found matching release commit, return
+				// Found matching release commit
+				commit, err := repo.CommitObject(plumbing.NewHash(commitHash))
+				if err != nil {
+					return nil, fmt.Errorf("can't load commit object: %s", err)
+				}
+
+				commitIter := object.NewCommitPreorderIter(commit, seenExternal, []plumbing.Hash{})
+				commitIter.ForEach(func(c *object.Commit) error {
+					seenExternal[c.Hash] = true
+
+					return nil
+				})
+
 				seenExternal[plumbing.NewHash(commitHash)] = true
+
 				break
 			}
 		}
@@ -172,19 +188,6 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 		}
 
 		Debugf("Analyze commit %s for changelog => %v", commit.Hash.String(), a.mapCommitTags[commit.Hash.String()])
-
-		/*if exists {
-			for _, versionInfo := range versionInfos {
-				if !versionInfo.ReleaseChannel.IsRelease() {
-					continue
-				}
-
-				if !channelSensitive || versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
-					// Found matching release commit, return
-					return commits, nil
-				}
-			}
-		}*/
 
 		commits = append(commits, commit)
 	}
