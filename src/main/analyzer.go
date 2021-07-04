@@ -72,16 +72,41 @@ func (a *Analyzer) Load(repo *git.Repository) error {
 	return nil
 }
 
-func (a *Analyzer) GetCurrentBranchConfig(repo *git.Repository) (*BranchConfig, error) {
-	branchName := a.head.Name().Short()
+func (a *Analyzer) GetCurrentBranchConfig(repo *git.Repository) (string, *BranchConfig, error) {
+	branchIter, err := repo.Branches()
+	if err != nil {
+		return "", nil, fmt.Errorf("can't load branches: %s", err)
+	}
 
-	for _, branchConfig := range a.config.Branches {
-		if branchConfig.GetBranchPattern().Match(branchName) {
-			return branchConfig, nil
+	branchName := ""
+
+	for {
+		branch, err := branchIter.Next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return "", nil, fmt.Errorf("can't iterate branches: %s", err)
+		}
+
+		if branch.Hash() == a.head.Hash() {
+			branchName = branch.Name().Short()
+			break
 		}
 	}
 
-	return nil, nil
+	if branchName == "" {
+		return "", nil, nil
+	}
+
+	for _, branchConfig := range a.config.Branches {
+		if branchConfig.GetBranchPattern().Match(branchName) {
+			return branchName, branchConfig, nil
+		}
+	}
+
+	return branchName, nil, nil
 }
 
 func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*VersionInfo, error) {
@@ -149,8 +174,8 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 	return commits, nil
 }
 
-func (a *Analyzer) GeneraterVersionTag(branchConfig *BranchConfig, versionInfo *VersionInfo) (string, error) {
-	versionInfo.Branch = a.head.Name().Short()
+func (a *Analyzer) GeneraterVersionTag(branchName string, branchConfig *BranchConfig, versionInfo *VersionInfo) (string, error) {
+	versionInfo.Branch = branchName
 	versionInfo.Commit = a.headCommit.Hash.String()
 
 	newTag, err := branchConfig.GetVersionPattern().GenerateUnique(versionInfo, a.mapTags, true)

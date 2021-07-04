@@ -49,7 +49,7 @@ func getVersion() error {
 		return fmt.Errorf("error loading analyzer: %s", err)
 	}
 
-	branchConfig, err := analyzer.GetCurrentBranchConfig(repo)
+	branchName, branchConfig, err := analyzer.GetCurrentBranchConfig(repo)
 	if err != nil {
 		return fmt.Errorf("error getting branch config: %s", err)
 	}
@@ -85,7 +85,7 @@ func getVersion() error {
 		}
 	}
 
-	newTag, err := analyzer.GeneraterVersionTag(branchConfig, highestVersion)
+	newTag, err := analyzer.GeneraterVersionTag(branchName, branchConfig, highestVersion)
 	if err != nil {
 		return fmt.Errorf("error generating version: %s", err)
 	}
@@ -114,7 +114,7 @@ func getChangelog() error {
 		return fmt.Errorf("error loading analyzer: %s", err)
 	}
 
-	branchConfig, err := analyzer.GetCurrentBranchConfig(repo)
+	_, branchConfig, err := analyzer.GetCurrentBranchConfig(repo)
 	if err != nil {
 		return fmt.Errorf("error getting branch config: %s", err)
 	}

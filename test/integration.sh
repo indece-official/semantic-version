@@ -55,6 +55,9 @@ testSimple() {
     assertChangelogLines 0
 
     echo "2" > "testfile.txt"
+    assertVersion "v1.0.0"
+    assertChangelogLines 0
+
     git add . > /dev/null
     git commit -m "feat: Some change" > /dev/null
     assertVersion "v1.0.0"
