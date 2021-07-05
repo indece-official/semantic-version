@@ -1,5 +1,6 @@
 # Project config
 PROJECT_NAME=semantic-version
+PROJECT_URL=https://github.com/indece-official/semantic-version
 BUILD_DATE=$(shell date +%Y%m%d.%H%M%S)
 BUILD_VERSION ?= SNAPSHOT
 
@@ -17,6 +18,7 @@ BINARY_NAME_LINUX64=$(PROJECT_NAME)-$(BUILD_VERSION)-linux-amd64
 SHA256_NAME_LINUX64=$(PROJECT_NAME)-$(BUILD_VERSION)-linux-amd64.sha256
 LDFLAGS := 
 LDFLAGS := $(LDFLAGS) -X main.ProjectName=$(PROJECT_NAME)
+LDFLAGS := $(LDFLAGS) -X main.ProjectURL=$(PROJECT_URL)
 LDFLAGS := $(LDFLAGS) -X main.BuildDate=$(BUILD_DATE)
 LDFLAGS := $(LDFLAGS) -X main.BuildVersion=$(BUILD_VERSION)
 

@@ -6,6 +6,26 @@ Lightweight and configurable semantic-version generator without runtime dependen
 * Single binary without dependencies (does *not* need Maven, Gradle, NPM etc.)
 
 ## Usage
+```
+Usage: semantic-version [args] <command>
+
+Args:
+  -build int
+         (default -1)
+  -config string
+         (default "./semanticversion.yaml")
+  -debug
+    
+  -git-branch string
+    
+  -v    Print the version info and exit
+
+Commands:
+  generate-config  Generate config file 'semanticversion.yaml'
+  get-version      Get the new release version
+  get-changelog    Get a changelog with all changes since the last release
+```
+
 ### Setup
 Download the binary and you are ready to go
 
@@ -60,7 +80,7 @@ Output:
 ```
 
 ## Configuration
-Coming soon
+* [Example 'Maven'](./docu/example-maven.md)
 
 
 ## Development

@@ -12,16 +12,15 @@ import (
 )
 
 var flagGitBranch = flag.String("git-branch", "", "")
+var flagBuild = flag.Int("build", -1, "")
 
 type Analyzer struct {
 	// commit-hash => VersionInfo of tag
 	mapCommitTags map[string][]*VersionInfo
-	// commit-hash => parent commit-hashes
-	//mapCommitTagParents map[string][]string
-	mapTags    map[string]bool
-	head       *plumbing.Reference
-	headCommit *object.Commit
-	config     *Config
+	mapTags       map[string]bool
+	head          *plumbing.Reference
+	headCommit    *object.Commit
+	config        *Config
 }
 
 func (a *Analyzer) Load(repo *git.Repository) error {
@@ -198,6 +197,11 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 func (a *Analyzer) GeneraterVersionTag(branchName string, branchConfig *BranchConfig, versionInfo *VersionInfo) (string, error) {
 	versionInfo.Branch = branchName
 	versionInfo.Commit = a.headCommit.Hash.String()
+	versionInfo.ShortCommit = a.headCommit.Hash.String()[:10]
+
+	if *flagBuild >= 0 {
+		versionInfo.Build = *flagBuild
+	}
 
 	newTag, err := branchConfig.GetVersionPattern().GenerateUnique(versionInfo, a.mapTags, true)
 	if err != nil {

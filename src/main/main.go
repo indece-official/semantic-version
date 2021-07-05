@@ -4,28 +4,28 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/go-git/go-git/v5"
 )
 
-type BranchPattern struct {
-	exp *regexp.Regexp
-}
+// Variables set during build
+var (
+	ProjectName  string
+	ProjectURL   string
+	BuildVersion string
+	BuildDate    string
+)
 
-func (p *BranchPattern) Match(str string) bool {
-	return p.exp.MatchString(str)
-}
+var flagVersion = flag.Bool("v", false, "Print the version info and exit")
 
-func NewBranchPattern(pattern string) (*BranchPattern, error) {
-	exp, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
+func printOwnVersion() error {
+	fmt.Printf("%s %s (Build %s)\n", ProjectName, BuildVersion, BuildDate)
+	fmt.Printf("\n")
+	fmt.Printf("%s\n", ProjectURL)
+	fmt.Printf("\n")
+	fmt.Printf("Copyright 2021 by indece UG (haftungsbeschränkt)\n")
 
-	return &BranchPattern{
-		exp: exp,
-	}, nil
+	return nil
 }
 
 func generateConfig() error {
@@ -142,7 +142,7 @@ func getChangelog() error {
 }
 
 func printHelp() {
-	fmt.Printf("Usage: is2-semantic-version [args] <command>\n")
+	fmt.Printf("Usage: semantic-version [args] <command>\n")
 	fmt.Printf("\n")
 	fmt.Printf("Args:\n")
 	flag.PrintDefaults()
@@ -151,12 +151,22 @@ func printHelp() {
 	fmt.Printf("  generate-config  Generate config file 'semanticversion.yaml'\n")
 	fmt.Printf("  get-version      Get the new release version\n")
 	fmt.Printf("  get-changelog    Get a changelog with all changes since the last release\n")
+	fmt.Printf("\n")
 }
 
 func main() {
 	var err error
 
 	flag.Parse()
+	flag.Usage = printHelp
+
+	if *flagVersion {
+		printOwnVersion()
+
+		os.Exit(0)
+
+		return
+	}
 
 	if len(flag.Args()) != 1 {
 		printHelp()

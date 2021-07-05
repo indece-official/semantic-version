@@ -9,6 +9,7 @@ type VersionInfo struct {
 	Build          int
 	Branch         string
 	Commit         string
+	ShortCommit    string
 	ReleaseChannel ReleaseChannel
 }
 

@@ -39,6 +39,24 @@ func TestVersionGenerate(t *testing.T) {
 	assert.Equal(t, "v2.12.56-feat_stephan.0", version)
 }
 
+func TestVersionGenerateShortCommit(t *testing.T) {
+	ptr, err := NewVersionPattern("v{major}.{minor}.{patch}-{shortcommit}.{build}", ReleaseChannelNone)
+	assert.NoError(t, err)
+	assert.NotNil(t, ptr)
+
+	versionInfo := &VersionInfo{
+		Major:       2,
+		Minor:       12,
+		Patch:       56,
+		Build:       0,
+		Branch:      "feat/stephan",
+		ShortCommit: "abcdef12345",
+	}
+
+	version := ptr.Generate(versionInfo)
+	assert.Equal(t, "v2.12.56-abcdef12345.0", version)
+}
+
 func TestVersionGenerateUnique(t *testing.T) {
 	ptr, err := NewVersionPattern("v{major}.{minor}.{patch}-{branch}.{build}", ReleaseChannelNone)
 	assert.NoError(t, err)

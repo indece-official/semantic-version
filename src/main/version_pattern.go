@@ -63,6 +63,8 @@ func (p *VersionPattern) Parse(str string) *VersionInfo {
 			versionInfo.Branch = match[i]
 		case "commit":
 			versionInfo.Commit = match[i]
+		case "shortcommit":
+			versionInfo.ShortCommit = match[i]
 		}
 	}
 
@@ -79,6 +81,7 @@ func (v *VersionPattern) Generate(info *VersionInfo) string {
 	str = strings.ReplaceAll(str, "{build}", fmt.Sprintf("%d", info.Build))
 	str = strings.ReplaceAll(str, "{branch}", branch)
 	str = strings.ReplaceAll(str, "{commit}", info.Commit)
+	str = strings.ReplaceAll(str, "{shortcommit}", info.ShortCommit)
 
 	return str
 }
@@ -124,6 +127,7 @@ func NewVersionPattern(pattern string, releaseChannel ReleaseChannel) (*VersionP
 	expPattern = strings.ReplaceAll(expPattern, "{build}", "(?P<build>\\d+)")
 	expPattern = strings.ReplaceAll(expPattern, "{branch}", "(?P<branch>[a-zA-Z0-9\\_\\-\\\\/\\(\\)\\[\\]]+)")
 	expPattern = strings.ReplaceAll(expPattern, "{commit}", "(?P<commit>[a-zA-Z0-9]+)")
+	expPattern = strings.ReplaceAll(expPattern, "{shortcommit}", "(?P<shortcommit>[a-zA-Z0-9]+)")
 	expPattern = fmt.Sprintf("^%s$", expPattern)
 
 	exp, err := regexp.Compile(expPattern)
