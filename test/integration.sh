@@ -170,8 +170,8 @@ testBranches() {
     echo "Success"
 }
 
-testDevelopRelease() {
-    echo "Testing develop/release repository"
+testDevelopReleaseSimple() {
+    echo "Testing simple develop/release repository"
 
     git init > /dev/null
     
@@ -214,9 +214,164 @@ testDevelopRelease() {
     assertChangelogLines 0
 
     git merge develop --no-ff --commit -m "Merge develop in master"
-    git tree
     assertVersion "v1.1.1"
     assertChangelogLines 1
+
+    echo "Success"
+}
+
+testDevelopReleaseComplex() {
+    echo "Testing complex develop/release repository"
+
+    cat >./semanticversion.yaml <<EOL
+branches:
+  - branch_pattern: master
+    release_channel: FINAL
+    version_pattern: v{major}.{minor}.{patch}
+
+  - branch_pattern: release.*
+    release_channel: FINAL
+    version_pattern: v{major}.{minor}.{patch}
+
+  - branch_pattern: testing.*
+    release_channel: BETA
+    version_pattern: v{major}.{minor}.{patch}-beta.{build}
+EOL
+
+    git init > /dev/null
+
+    echo "1" > "testfile1.txt"
+    git add . > /dev/null
+    git commit -m "Initial commit" > /dev/null
+    assertVersion "v1.0.0"
+    assertChangelogLines 0
+
+    git tag v1.0.0
+
+    git checkout -b release-1.x
+    echo "2" > "testfile2.txt"
+    git add . > /dev/null
+    git commit -m "fix: 2" > /dev/null
+    assertVersion "v1.0.1"
+    assertChangelogLines 1
+
+    git tag v1.0.1
+
+    git checkout -b testing-1.x
+    echo "3" > "testfile3.txt"
+    git add . > /dev/null
+    git commit -m "fix: 3" > /dev/null
+    assertVersion "v1.0.2-beta.0"
+    assertChangelogLines 1
+
+    git checkout -b develop-1.x
+
+    echo "4" > "testfile4.txt"
+    git add . > /dev/null
+    git commit -m "feat: 4" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+    
+    echo "5" > "testfile5.txt"
+    git add . > /dev/null
+    git commit -m "fix: 5" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    git checkout testing-1.x
+
+    git merge develop-1.x --no-ff --commit -m "Merge develop-1.x in testing-1.x"
+    assertVersion "v1.1.0-beta.0"
+    assertChangelogLines 3
+
+    git tag v1.1.0-beta.0
+
+    git checkout release-1.x
+
+    git checkout -b release-2.x
+
+    git checkout -b testing-2.x
+
+    git checkout -b develop-2.x
+
+    echo "6" > "testfile6.txt"
+    git add . > /dev/null
+    git commit -m "break: 6" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+    
+    echo "7" > "testfile7.txt"
+    git add . > /dev/null
+    git commit -m "fix: 7" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    git checkout testing-2.x
+
+    git merge develop-2.x --no-ff --commit -m "Merge develop-2.x in testing-2.x"
+    assertVersion "v2.0.0-beta.0"
+    assertChangelogLines 2
+
+    git tag v2.0.0-beta.0
+    
+    git checkout release-2.x
+
+    git merge testing-2.x --no-ff --commit -m "Merge testing-2.x in release-2.x"
+
+    assertVersion "v2.0.0"
+    assertChangelogLines 2
+
+    git tag v2.0.0
+    
+    git checkout develop-2.x
+
+    echo "8" > "testfile8.txt"
+    git add . > /dev/null
+    git commit -m "feat: 8" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+    
+    echo "9" > "testfile9.txt"
+    git add . > /dev/null
+    git commit -m "fix: 9" > /dev/null
+    assertVersion "UNKNOWN"
+    assertChangelogLines 0
+
+    git checkout testing-2.x
+
+    git merge develop-2.x --no-ff --commit -m "Merge develop-2.x in testing-2.x"
+     
+    assertVersion "v2.1.0-beta.0"
+    assertChangelogLines 2
+
+    git tag v2.1.0-beta.0
+    
+    git checkout release-2.x
+
+    git merge testing-2.x --no-ff --commit -m "Merge testing-2.x in release-2.x"
+
+    assertVersion "v2.1.0"
+    assertChangelogLines 2
+
+    git tag v2.1.0
+
+    git checkout release-1.x
+    assertVersion "v1.0.1"
+    assertChangelogLines 0
+    
+    git checkout testing-1.x
+    assertVersion "v1.1.0-beta.1"  -debug
+    assertChangelogLines 0
+
+    git checkout release-1.x
+
+    git merge testing-1.x --no-ff --commit -m "Merge testing-1.x in release-1.x"
+    assertVersion "v1.1.0"
+    assertChangelogLines 3
+
+    git tag v1.1.0
+    assertVersion "v1.1.0"
+    assertChangelogLines 0
 
     echo "Success"
 }
@@ -229,7 +384,10 @@ main() {
     testBranches
 
     before
-    testDevelopRelease
+    testDevelopReleaseSimple
+
+    before
+    testDevelopReleaseComplex
 }
 
 main

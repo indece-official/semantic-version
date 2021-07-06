@@ -66,7 +66,7 @@ func getVersion() error {
 		return fmt.Errorf("error getting highest final release: %s", err)
 	}
 
-	commits, err := analyzer.GetCommitsSinceLastRelease(repo, branchConfig, true)
+	commits, err := analyzer.GetCommitsSinceLastRelease(repo, branchConfig, ReleaseChannelFinal)
 	if err != nil {
 		return fmt.Errorf("error loading commits since last release: %s", err)
 	}
@@ -126,7 +126,7 @@ func getChangelog() error {
 		return nil
 	}
 
-	commits, err := analyzer.GetCommitsSinceLastRelease(repo, branchConfig, true)
+	commits, err := analyzer.GetCommitsSinceLastRelease(repo, branchConfig, ReleaseChannelAlpha)
 	if err != nil {
 		return fmt.Errorf("error loading commits since last release: %s", err)
 	}

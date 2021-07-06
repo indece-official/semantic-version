@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -112,7 +113,49 @@ func (a *Analyzer) GetCurrentBranchConfig(repo *git.Repository) (string, *Branch
 }
 
 func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*VersionInfo, error) {
-	var highestTag *VersionInfo
+	var highestTag *Tag
+
+	// Get relevant tags
+	tags := []*Tag{}
+	for tagName, versionInfos := range a.mapCommitTags {
+		for _, versionInfo := range versionInfos {
+			if versionInfo.ReleaseChannel.GetPrio() >= ReleaseChannelFinal.GetPrio() {
+				tags = append(tags, &Tag{
+					Name:    tagName,
+					Version: versionInfo,
+				})
+
+				break
+			}
+		}
+	}
+
+	// Sort ascending by version
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Version.IsGreaterThan(tags[j].Version)
+	})
+
+	// Build map of highest versions for commits
+	commitHighestTagMap := map[string]*Tag{}
+	for _, tag := range tags {
+		Debugf("Processing tag %s ...", tag.Name)
+		revision := plumbing.Revision(tag.Name)
+		tagHash, err := repo.ResolveRevision(revision)
+		if err != nil || tagHash == nil {
+			return nil, fmt.Errorf("can't resolve tag %s: %s", tag.Name, err)
+		}
+
+		tagCommit, err := repo.CommitObject(*tagHash)
+		if err != nil {
+			return nil, fmt.Errorf("can't resolve tag hash %s: %s", tag.Name, err)
+		}
+
+		commitIter := object.NewCommitIterBSF(tagCommit, map[plumbing.Hash]bool{}, []plumbing.Hash{})
+		commitIter.ForEach(func(commit *object.Commit) error {
+			commitHighestTagMap[commit.Hash.String()] = tag
+			return nil
+		})
+	}
 
 	commitIter := object.NewCommitPostorderIter(a.headCommit, []plumbing.Hash{})
 	for {
@@ -125,36 +168,35 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 			return nil, fmt.Errorf("can't iterate commits: %s", err)
 		}
 
-		versionInfos, exists := a.mapCommitTags[commit.Hash.String()]
-		if exists {
-			for _, versionInfo := range versionInfos {
-				if versionInfo.ReleaseChannel != ReleaseChannelFinal {
-					continue
-				}
-
-				if highestTag == nil || versionInfo.IsGreaterThan(highestTag) {
-					highestTag = versionInfo
-				}
-			}
+		tag, exists := commitHighestTagMap[commit.Hash.String()]
+		if exists &&
+			(highestTag == nil || tag.Version.IsGreaterThan(highestTag.Version)) {
+			highestTag = tag
 		}
 	}
 
-	Debugf("Found highest release tag %v", highestTag)
+	if highestTag == nil {
+		Debugf("Found no highest release tag")
 
-	return highestTag, nil
+		return nil, nil
+	}
+
+	Debugf("Found highest release tag %s", highestTag.Name)
+
+	return highestTag.Version, nil
 }
 
-func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig *BranchConfig, channelSensitive bool) ([]*object.Commit, error) {
+func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig *BranchConfig, minReleaseChannel ReleaseChannel) ([]*object.Commit, error) {
 	commits := []*object.Commit{}
 
 	seenExternal := map[plumbing.Hash]bool{}
 	for commitHash, versionInfos := range a.mapCommitTags {
 		for _, versionInfo := range versionInfos {
-			if !versionInfo.ReleaseChannel.IsRelease() {
+			if !versionInfo.ReleaseChannel.IsRelease() || versionInfo.ReleaseChannel.GetPrio() < minReleaseChannel.GetPrio() {
 				continue
 			}
 
-			if !channelSensitive || versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
+			if versionInfo.ReleaseChannel.GetPrio() >= branchConfig.ReleaseChannel.GetPrio() {
 				// Found matching release commit
 				commit, err := repo.CommitObject(plumbing.NewHash(commitHash))
 				if err != nil {

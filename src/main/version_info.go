@@ -50,3 +50,8 @@ func (v *VersionInfo) IsGreaterThan(b *VersionInfo) bool {
 func (v *VersionInfo) String() string {
 	return fmt.Sprintf("%d.%d.%d.%d-%s [%s]", v.Major, v.Minor, v.Patch, v.Build, v.Branch, v.ReleaseChannel)
 }
+
+type Tag struct {
+	Version *VersionInfo
+	Name    string
+}
