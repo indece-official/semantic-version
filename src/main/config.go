@@ -61,11 +61,26 @@ func (c *BranchConfig) Parse() error {
 	return nil
 }
 
+type VersionStrategy string
+
+const (
+	VersionStrategyLatest        VersionStrategy = "LATEST"
+	VersionStrategyOverallLatest VersionStrategy = "OVERALL_LATEST"
+	VersionStrategyClosest       VersionStrategy = "CLOSEST"
+)
+
 type Config struct {
 	Branches []*BranchConfig `yaml:"branches"`
+	Strategy VersionStrategy `yaml:"strategy"`
 }
 
 func (c *Config) Parse() error {
+	if c.Strategy != VersionStrategyLatest &&
+		c.Strategy != VersionStrategyOverallLatest &&
+		c.Strategy != VersionStrategyClosest {
+		return fmt.Errorf("invalid strategy \"%s\"", c.Strategy)
+	}
+
 	foundFinalReleaseChannel := false
 
 	for _, branch := range c.Branches {
@@ -87,6 +102,7 @@ func (c *Config) Parse() error {
 }
 
 var DefaultConfig = &Config{
+	Strategy: VersionStrategyLatest,
 	Branches: []*BranchConfig{
 		{
 			BranchPattern:  "master",

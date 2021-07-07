@@ -14,6 +14,7 @@
 
 ## semanticversion.yaml
 ```
+strategy: LATEST
 branches:
   - branch_pattern: 'master'
     release_channel: 'FINAL'

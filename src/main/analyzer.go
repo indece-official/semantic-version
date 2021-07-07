@@ -17,7 +17,7 @@ var flagBuild = flag.Int("build", -1, "")
 
 type Analyzer struct {
 	// commit-hash => VersionInfo of tag
-	mapCommitTags map[string][]*VersionInfo
+	mapCommitTags map[string][]*Tag
 	mapTags       map[string]bool
 	head          *plumbing.Reference
 	headCommit    *object.Commit
@@ -73,10 +73,15 @@ func (a *Analyzer) Load(repo *git.Repository) error {
 			Debugf("Found tag %s (%s) => %v", tagName, tagCommitStr, versionInfo)
 
 			if _, exists := a.mapCommitTags[tagCommitStr]; !exists {
-				a.mapCommitTags[tagCommitStr] = []*VersionInfo{}
+				a.mapCommitTags[tagCommitStr] = []*Tag{}
 			}
 
-			a.mapCommitTags[tagCommitStr] = append(a.mapCommitTags[tagCommitStr], versionInfo)
+			tag := &Tag{
+				Name:    tagName,
+				Version: versionInfo,
+			}
+
+			a.mapCommitTags[tagCommitStr] = append(a.mapCommitTags[tagCommitStr], tag)
 			a.mapTags[tagName] = true
 		}
 	}
@@ -116,14 +121,11 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 	var highestTag *Tag
 
 	// Get relevant tags
-	tags := []*Tag{}
-	for tagName, versionInfos := range a.mapCommitTags {
-		for _, versionInfo := range versionInfos {
-			if versionInfo.ReleaseChannel.GetPrio() >= ReleaseChannelFinal.GetPrio() {
-				tags = append(tags, &Tag{
-					Name:    tagName,
-					Version: versionInfo,
-				})
+	finalReleaseTags := []*Tag{}
+	for _, tags := range a.mapCommitTags {
+		for _, tag := range tags {
+			if tag.Version.ReleaseChannel.GetPrio() >= ReleaseChannelFinal.GetPrio() {
+				finalReleaseTags = append(finalReleaseTags, tag)
 
 				break
 			}
@@ -131,13 +133,13 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 	}
 
 	// Sort ascending by version
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Version.IsGreaterThan(tags[j].Version)
+	sort.Slice(finalReleaseTags, func(i, j int) bool {
+		return finalReleaseTags[j].Version.IsGreaterThan(finalReleaseTags[i].Version)
 	})
 
 	// Build map of highest versions for commits
 	commitHighestTagMap := map[string]*Tag{}
-	for _, tag := range tags {
+	for _, tag := range finalReleaseTags {
 		Debugf("Processing tag %s ...", tag.Name)
 		revision := plumbing.Revision(tag.Name)
 		tagHash, err := repo.ResolveRevision(revision)
@@ -152,13 +154,26 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 
 		commitIter := object.NewCommitIterBSF(tagCommit, map[plumbing.Hash]bool{}, []plumbing.Hash{})
 		commitIter.ForEach(func(commit *object.Commit) error {
-			commitHighestTagMap[commit.Hash.String()] = tag
+			commitHash := commit.Hash.String()
+
+			switch a.config.Strategy {
+			case VersionStrategyLatest:
+				commitHighestTagMap[commitHash] = tag
+			case VersionStrategyOverallLatest:
+				commitHighestTagMap[commitHash] = tag
+			case VersionStrategyClosest:
+				if commitHighestTagMap[commitHash] == nil {
+					commitHighestTagMap[commitHash] = tag
+				}
+			}
+
 			return nil
 		})
 	}
 
 	commitIter := object.NewCommitPostorderIter(a.headCommit, []plumbing.Hash{})
-	for {
+	finished := false
+	for !finished {
 		commit, err := commitIter.Next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -169,9 +184,21 @@ func (a *Analyzer) GetHighestFinalReleaseVersion(repo *git.Repository) (*Version
 		}
 
 		tag, exists := commitHighestTagMap[commit.Hash.String()]
-		if exists &&
-			(highestTag == nil || tag.Version.IsGreaterThan(highestTag.Version)) {
+		if !exists {
+			continue
+		}
+
+		switch a.config.Strategy {
+		case VersionStrategyLatest:
 			highestTag = tag
+			finished = true
+		case VersionStrategyOverallLatest:
+			if highestTag == nil || tag.Version.IsGreaterThan(highestTag.Version) {
+				highestTag = tag
+			}
+		case VersionStrategyClosest:
+			highestTag = tag
+			finished = true
 		}
 	}
 
@@ -190,8 +217,10 @@ func (a *Analyzer) GetCommitsSinceLastRelease(repo *git.Repository, branchConfig
 	commits := []*object.Commit{}
 
 	seenExternal := map[plumbing.Hash]bool{}
-	for commitHash, versionInfos := range a.mapCommitTags {
-		for _, versionInfo := range versionInfos {
+	for commitHash, tags := range a.mapCommitTags {
+		for _, tag := range tags {
+			versionInfo := tag.Version
+
 			if !versionInfo.ReleaseChannel.IsRelease() || versionInfo.ReleaseChannel.GetPrio() < minReleaseChannel.GetPrio() {
 				continue
 			}
@@ -255,7 +284,7 @@ func (a *Analyzer) GeneraterVersionTag(branchName string, branchConfig *BranchCo
 
 func NewAnalyzer(config *Config) *Analyzer {
 	return &Analyzer{
-		mapCommitTags: map[string][]*VersionInfo{},
+		mapCommitTags: map[string][]*Tag{},
 		mapTags:       map[string]bool{},
 		config:        config,
 	}
