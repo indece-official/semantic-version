@@ -82,6 +82,7 @@ Output:
 ## Configuration
 * [Documentation](./docu/config.md)
 * [Example 'Maven'](./docu/example-maven.md)
+* [Example 'CICD'](./docu/example-cicd.md)
 
 
 ## Development
